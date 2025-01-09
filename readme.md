@@ -13,9 +13,13 @@ Una clase wrapper para SQLite que proporciona operaciones comunes de base de dat
 - Soporte todos los tipo de datos, sin crear limitaciones
 ## Instalación
 
-1. Asegúrate de tener Python 3.x instalado
+1. Asegúrate de tener **Python ≥ 3.6** instalado
 2. El módulo usa solo librerías integradas de Python (`sqlite3` y `re`), por lo que no requiere instalación adicional
-3. Copia el archivo `GenerarDB.py` a tu directorio de proyecto
+3. Usar los siguientes comandos: 
+```bash
+python -m pip install --upgrade pip # (Opcional)
+pip install GenerarDB
+```
 
 ## Uso
 
