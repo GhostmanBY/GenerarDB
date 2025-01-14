@@ -1,19 +1,40 @@
 import re
 import sqlite3
+import os
 
-class DB_SQLite():
-    def __init__(self, Nombre):
+class DB_SQLite:
+    def __init__(self, ruta_relativa, ruta_absoluta=None):
         """
         Inicializa la conexión a la base de datos SQLite.
         
         :param Nombre: Nombre de la base de datos.
         """
         try:
+            Nombre = self.obtener_ruta_absoluta(ruta_relativa, ruta_absoluta)
             self.conn = sqlite3.connect(f'{Nombre}.db')
             self.cursor = self.conn.cursor()
         except sqlite3.Error as e:
             print(f"Error al conectar con la base de datos: {e}")
             self.conn = None
+
+    def obtener_ruta_absoluta(self, db_relative_path: str, base_directory: str) -> str:
+        """
+        Resuelve una ruta relativa a una ruta absoluta partiendo del directorio base.
+        
+        Args:
+            db_relative_path (str): Ruta relativa de la base de datos (ej: "../../database/data")
+            base_directory (str): Ruta absoluta del directorio base (ej: "C:/Users/Admin/Desktop/Repos/SuperMaker/sistema_caja/backend/app")
+            
+        Returns:
+            str: Ruta absoluta de la base de datos
+        """
+        # Combina el directorio base con la ruta relativa de la base de datos
+        full_path = os.path.join(base_directory, db_relative_path)
+        
+        # Resuelve la ruta absoluta
+        absolute_path = os.path.abspath(full_path)
+        
+        return absolute_path
 
     def __enter__(self):
         """
@@ -56,7 +77,7 @@ class DB_SQLite():
                 ) 
             '''
 
-            self.cursor.execute(f'{Resultado}')
+            self.cursor.execute(Resultado)
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error al crear la tabla: {e}")
@@ -83,7 +104,7 @@ class DB_SQLite():
         except sqlite3.Error as e:
             print(f"Error al ingresar datos: {e}")
     
-    def Modificar(self, Tabla, Nombre, categoria, nuevo_value):
+    def Modificar(self, Tabla, categoria, nuevo_value, Agregado = None):
         """
         Modifica un registro existente en la tabla especificada.
 
@@ -93,38 +114,52 @@ class DB_SQLite():
         :param nuevo_value: Nuevo valor para la columna.
         """
         try:
+            # Validar que el nombre de la tabla no sea peligroso
             if not Tabla.isidentifier():
                 raise ValueError(f"El nombre de la tabla '{Tabla}' no es válido.")
+
+            consulta = f"UPDATE {Tabla} SET {categoria} = ?"
+
+            # Validar y agregar cláusulas adicionales
+            if not Agregado == None:
+                Agregado, parametros = self.validar_agregado(Agregado)
+                consulta += f" {Agregado}"
+                parametros.insert(0, nuevo_value)
+            #print(consulta, parametros)
             
-            if not categoria.isidentifier():
-                raise ValueError(f"El nombre de la categoria '{categoria}' no es válido.")
-            
-            self.cursor.execute(f'''
-                UPDATE {Tabla} SET {categoria} = ? WHERE Nombre = ?
-            ''', (nuevo_value, Nombre))
+            self.cursor.execute(consulta, parametros)
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error al modificar datos: {e}")
 
-    def Eliminar(self, Tabla, ID):
+    def Eliminar(self, Tabla, Agregado = None):
         """
-        Elimina un registro de la tabla especificada.
+        Modifica un registro existente en la tabla especificada.
 
         :param Tabla: Nombre de la tabla.
-        :param ID: ID del registro a eliminar.
+        :param Nombre: Nombre del registro a modificar.
+        :param categoria: Columna a modificar.
+        :param nuevo_value: Nuevo valor para la columna.
         """
         try:
+            # Validar que el nombre de la tabla no sea peligroso
             if not Tabla.isidentifier():
                 raise ValueError(f"El nombre de la tabla '{Tabla}' no es válido.")
+
+            consulta = f"DELETE FROM {Tabla}"
+
+            # Validar y agregar cláusulas adicionales
+            if not Agregado == None:
+                Agregado, parametros = self.validar_agregado(Agregado)
+                consulta += f" {Agregado}"
+            #print(consulta, parametros)
             
-            self.cursor.execute(f'''
-                DELETE FROM {Tabla} WHERE ID = ?
-            ''', (ID,))
+            self.cursor.execute(consulta, parametros)
             self.conn.commit()
         except sqlite3.Error as e:
-            print(f"Error al eliminar datos: {e}")
+            print(f"Error al modificar datos: {e}")
 
-    def Consultar(self, Tabla, Agregado=None, Columna='*'):
+    def Consultar(self, Tabla=None, Agregado=None, Columna='*'):
         """
         Consulta registros de la tabla especificada.
 
@@ -134,6 +169,13 @@ class DB_SQLite():
         :return: Resultados de la consulta.
         """
         try:
+            # Si no se especifica tabla, se asume una consulta especial
+            if Tabla is None and Agregado == "last_insert_rowid()":
+                consulta = "SELECT last_insert_rowid()"
+                self.cursor.execute(consulta)
+                return self.cursor.fetchone()
+            elif Tabla is None and Agregado == "rowcount":
+                return self.cursor.rowcount   
             # Validar que el nombre de la tabla no sea peligroso
             if not Tabla.isidentifier():
                 raise ValueError(f"El nombre de la tabla '{Tabla}' no es válido.")
@@ -234,3 +276,4 @@ class DB_SQLite():
             return agregado, parametros
         except Exception as e:
             print(f"Error al validar el agregado: {e}")
+
