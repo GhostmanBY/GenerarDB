@@ -11,7 +11,7 @@ class DB_SQLite:
         """
         try:
             Nombre = self.obtener_ruta_absoluta(ruta_relativa, ruta_absoluta)
-            self.conn = sqlite3.connect(f'{Nombre}.db')
+            self.conn = sqlite3.connect(f'{Nombre}.db', check_same_thread=False)
             self.cursor = self.conn.cursor()
         except sqlite3.Error as e:
             print(f"Error al conectar con la base de datos: {e}")
@@ -101,8 +101,9 @@ class DB_SQLite:
             # Ejecutar la consulta
             self.cursor.execute(consulta, valores)
             self.conn.commit()
+            return True
         except sqlite3.Error as e:
-            print(f"Error al ingresar datos: {e}")
+           return f"Error al ingresar datos: {e}"
     
     def Modificar(self, Tabla, categoria, nuevo_value, Agregado = None):
         """
@@ -276,4 +277,3 @@ class DB_SQLite:
             return agregado, parametros
         except Exception as e:
             print(f"Error al validar el agregado: {e}")
-
